@@ -24,12 +24,12 @@ class KanjiWidget(QWidget):
         self.layout.addWidget(self.button_next)
 
         self.setLayout(self.layout)
+        self.kanji_api = KanjiAPI(self.level)
         self.show_kanji_info()
 
     def show_kanji_info(self):
-        kanji_api = KanjiAPI(self.level)
-        kanji = kanji_api.get_random_kanji()
-        kanji_info = kanji_api.get_kanji_info(kanji)
+        kanji = self.kanji_api.get_random_kanji()
+        kanji_info = self.kanji_api.get_kanji_info(kanji)
 
         info_text = f"Grade: {kanji_info['grade']}\n"
         info_text += f"Heisig EN: {kanji_info['heisig_en']}\n"
