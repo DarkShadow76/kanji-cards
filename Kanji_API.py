@@ -30,7 +30,7 @@ class KanjiAPI:
             return None
 
         random_kanji = self.kanji_list.pop()
-        print(self.kanji_list)
+        print(random_kanji)
         return random_kanji
 
     def get_kanji_info(self, kanji_char):
