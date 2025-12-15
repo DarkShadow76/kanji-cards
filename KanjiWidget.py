@@ -1,57 +1,96 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QMessageBox, QGridLayout, QTextEdit
+from PyQt5 import QtCore
 from Kanji_API import KanjiAPI
+from typing import Union, List
 
 
 class KanjiWidget(QWidget):
-    def __init__(self, level):
-        super().__init__()
-        self.level = level
-        self.setWindowTitle("Kanji Widget")
-        self.setGeometry(100, 100, 600, 400)
+    back_button_clicked = QtCore.pyqtSignal()
 
-        self.layout = QVBoxLayout()
+    def __init__(self, level: Union[int, List[str]]) -> None:
+        super().__init__()
+        self.level: Union[int, List[str]] = level
+        self.setWindowTitle("Kanji Widget")
+        self.setGeometry(100, 100, 800, 600)
+
+        self.grid_layout = QGridLayout()
 
         self.kanji_label = QLabel()
-        self.kanji_info_label = QLabel()
+        self.kanji_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.grid_layout.addWidget(self.kanji_label, 0, 0, 2, 1)
 
-        self.layout.addWidget(self.kanji_label)
-        self.layout.addWidget(self.kanji_info_label)
+        self.info_title = QLabel("Information")
+        self.info_title.setAlignment(QtCore.Qt.AlignCenter)
+        self.info_title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        self.grid_layout.addWidget(self.info_title, 0, 1, 1, 1)
+
+        self.kanji_info_text = QTextEdit()
+        self.kanji_info_text.setReadOnly(True)
+        self.grid_layout.addWidget(self.kanji_info_text, 1, 1, 1, 1)
 
         self.button_next = QPushButton("Next Kanji")
         self.button_next.clicked.connect(self.show_kanji_info)
 
-        self.layout.addWidget(self.button_next)
+        self.button_back = QPushButton("Go Back")
+        self.button_back.clicked.connect(self.back_button_clicked.emit)
 
-        self.setLayout(self.layout)
+        self.grid_layout.addWidget(self.button_next, 2, 0, 1, 2)
+        self.grid_layout.addWidget(self.button_back, 3, 0, 1, 2)
+
+        self.setLayout(self.grid_layout)
         self.kanji_api = KanjiAPI(self.level)
-        self.show_kanji_info()
+        if not self.kanji_api.kanji_list:
+            error_message = QMessageBox()
+            error_message.setIcon(QMessageBox.Critical)
+            error_message.setText("Failed to load Kanji list. Please check your connection or the selected level.")
+            error_message.setWindowTitle("Error")
+            error_message.exec_()
+            # self.back_button_clicked.emit()
+        else:
+            self.show_kanji_info()
 
-    def show_kanji_info(self):
+    def show_kanji_info(self) -> None:
         kanji = self.kanji_api.get_random_kanji()
-        kanji_info = self.kanji_api.get_kanji_info(kanji)
+        if not kanji:
+            error_message = QMessageBox()
+            error_message.setIcon(QMessageBox.Information)
+            error_message.setText("No more Kanji in the list.")
+            error_message.setWindowTitle("Information")
+            error_message.exec_()
+            self.back_button_clicked.emit()
+            return
 
-        info_text = f"Grade: {kanji_info['grade']}\n"
-        info_text += f"Heisig EN: {kanji_info['heisig_en']}\n"
-        info_text += f"JLPT: {kanji_info['jlpt']}\n"
-        info_text += f"Kanji: {kanji_info['kanji']}\n"
-        info_text += f"Kun Readings: {', '.join(kanji_info['kun_readings'])}\n"
-        info_text += f"Meanings: {', '.join(kanji_info['meanings'])}\n"
-        info_text += f"Name Readings: {', '.join(kanji_info['name_readings'])}\n"
-        info_text += f"Notes: {', '.join(kanji_info['notes'])}\n"
-        info_text += f"On Readings: {', '.join(kanji_info['on_readings'])}\n"
-        info_text += f"Stroke Count: {kanji_info['stroke_count']}\n"
-        info_text += f"Unicode: {kanji_info['unicode']}\n"
+        kanji_info, error = self.kanji_api.get_kanji_info(kanji)
 
-        self.kanji_label.setText(kanji)
-        self.kanji_label.setStyleSheet("font-size: 60px;")
+        if error:
+            error_message = QMessageBox()
+            error_message.setIcon(QMessageBox.Warning)
+            error_message.setText(error)
+            error_message.setWindowTitle("Error")
+            error_message.exec_()
+            return
 
-        self.kanji_info_label.setText(info_text)
-        self.kanji_info_label.setStyleSheet("font-size: 20px;")
+        if kanji_info:
+            info_html = f"""
+            <b>Grade:</b> {kanji_info.get('grade', 'N/A')}<br>
+            <b>Heisig EN:</b> {kanji_info.get('heisig_en', 'N/A')}<br>
+            <b>JLPT:</b> {kanji_info.get('jlpt', 'N/A')}<br>
+            <b>Kanji:</b> {kanji_info.get('kanji', 'N/A')}<br>
+            <b>Kun Readings:</b> {', '.join(kanji_info.get('kun_readings', []))}<br>
+            <b>Meanings:</b> {', '.join(kanji_info.get('meanings', []))}<br>
+            <b>Name Readings:</b> {', '.join(kanji_info.get('name_readings', []))}<br>
+            <b>On Readings:</b> {', '.join(kanji_info.get('on_readings', []))}<br>
+            <b>Stroke Count:</b> {kanji_info.get('stroke_count', 'N/A')}<br>
+            <b>Unicode:</b> {kanji_info.get('unicode', 'N/A')}<br>
+            """
+            self.kanji_info_text.setHtml(info_html)
+            self.kanji_label.setText(kanji)
+            self.kanji_label.setStyleSheet("font-size: 200px;")
+            self.kanji_info_text.setStyleSheet("font-size: 20px;")
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    app = QApplication([])
     window = KanjiWidget(1)
     window.show()
-    sys.exit(app.exec_())
+    app.exec_()

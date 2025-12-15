@@ -1,57 +1,68 @@
 import requests
 import random
+from typing import List, Dict, Tuple, Union, Any
 
 
 class KanjiAPI:
-    def __init__(self, level_k=random.randint(1, 6)):
-        self.base_url = "https://kanjiapi.dev/v1/kanji/"
-        self.level = level_k
-        self.kanji_list = self.get_kanji_list(self.level)
+    def __init__(self, level_k: Union[int, List[str]] = 0) -> None:
+        self.base_url: str = "https://kanjiapi.dev/v1/kanji/"
+        self.kanji_list: List[str] = []
 
-    def get_kanji_list(self, level):
+        if level_k == 0:
+            level_k = random.randint(1,6)
+
+        if isinstance(level_k, int):
+            self.level: int = level_k
+            kanji_list, error = self.get_kanji_list(self.level)
+            if error:
+                print(error)  # Or handle it more gracefully
+                self.kanji_list = []
+            else:
+                self.kanji_list = kanji_list if kanji_list else []
+        else:
+            self.kanji_list = level_k
+            random.shuffle(self.kanji_list)
+
+    def get_kanji_list(self, level: int) -> Tuple[List[str], None] | Tuple[None, str]:
         try:
-            url = f"{self.base_url}grade-{level}"
+            url: str = f"{self.base_url}grade-{level}"
             response = requests.get(url)
 
             if response.status_code == 200:
-                kanji_list = response.json()
+                kanji_list: List[str] = response.json()
                 random.shuffle(kanji_list)
-                return kanji_list
+                return kanji_list, None
             else:
-                print("Cannot Get Kanji List")
-                return None
+                return None, f"Cannot Get Kanji List. Status code: {response.status_code}"
         except Exception as e:
-            print(f"Error getting kanji list: {e}")
-            return None
+            return None, f"Error getting kanji list: {e}"
 
-    def get_random_kanji(self):
+    def get_random_kanji(self) -> str | None:
         if not self.kanji_list:
-            print("Kanji list is empty")
             return None
 
-        random_kanji = self.kanji_list.pop()
-        print(random_kanji)
+        random_kanji: str = self.kanji_list.pop()
         return random_kanji
 
-    def get_kanji_info(self, kanji_char):
+    def get_kanji_info(self, kanji_char: str) -> Tuple[Dict[str, Any], None] | Tuple[None, str]:
         try:
-            url = f"{self.base_url}{kanji_char}"
+            url: str = f"{self.base_url}{kanji_char}"
             response = requests.get(url)
             if response.status_code == 200:
-                info_kanji = response.json()
-
-                return info_kanji
+                info_kanji: Dict[str, Any] = response.json()
+                return info_kanji, None
             else:
-                print("Cannot get kanji info")
+                return None, f"Cannot get kanji info. Status code: {response.status_code}"
         except Exception as e:
-            print(f"Error Getting kanji: {e}")
+            return None, f"Error Getting kanji: {e}"
 
 
 if __name__ == "__main__":
     kanjiApi = KanjiAPI(1)
-    for i in range(4):
-        kanji = kanjiApi.get_random_kanji()
-        print(kanji)
+    if kanjiApi.kanji_list:
+        for i in range(4):
+            kanji = kanjiApi.get_random_kanji()
+            # print(kanji, end='  ')
 
-    print("\n")
-    print(kanjiApi.kanji_list)
+    # print()
+    # print(kanjiApi.kanji_list)
